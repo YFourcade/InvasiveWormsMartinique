@@ -11,6 +11,7 @@ library(terra)
 library(rnaturalearth)
 library(ecospat)
 library(FactoMineR)
+library(ENMeval)
 library(ENMTools)
 library(enmSdmX)
 library(sf)
@@ -66,7 +67,7 @@ ggplot() +
 
 # ENM / SDM ====
 ## set parameters ====
-env <- aggregate(env, 20, fun = "modal") #for testing only
+# env <- aggregate(env, 20, fun = "modal") #for testing only
 nb.back.pts <- 10000
 
 ## launch loop over all species ====
@@ -79,8 +80,9 @@ for(i in unique(occ$Species)){
   occ.tmp <- st_as_sf(occ.tmp, coords = c("X", "Y"), crs = getCRS('WGS84'))
   
   # extract environmental values at occurrences and background data
-  occEnv <- terra::extract(env, occ.tmp)[,-1]
-  
+  occEnv <- terra::extract(env, occ.tmp)[,-1] %>% na.omit()
+  occ.tmp <- occ.tmp[as.numeric(rownames(occEnv)),]
+    
   back <- spatSample(vect(martinique), size = nb.back.pts)
   backEnv <- terra::extract(env, back)[,-1] %>% na.omit()
   back <- back[as.numeric(rownames(backEnv))]
