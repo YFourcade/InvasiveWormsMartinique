@@ -41,6 +41,7 @@ nebulosity[nebulosity == 0] <- NA
 elevation <- mask(elevation, nebulosity)
 
 soil <- vect("../../Data_GIS/Soil/Soil_Martinique.shp")
+soil$LéGENDE__E <- gsub("SOL BRUN", "SOLS BRUN", soil$LéGENDE__E)
 soil <- project(soil, elevation)
 soil <- rasterize(soil, elevation, field = "LéGENDE__E")
 
@@ -68,7 +69,7 @@ ggplot() +
 # ENM / SDM ====
 ## set parameters ====
 # env <- aggregate(env, 20, fun = "modal") #for testing only
-nb.back.pts <- 10000
+nb.back.pts <- 1000 # for final models, use a bit more
 
 ## launch loop over all species ====
 results_all <- c()
@@ -82,7 +83,7 @@ for(i in unique(occ$Species)){
   # extract environmental values at occurrences and background data
   occEnv <- terra::extract(env, occ.tmp)[,-1] %>% na.omit()
   occ.tmp <- occ.tmp[as.numeric(rownames(occEnv)),]
-    
+  
   back <- spatSample(vect(martinique), size = nb.back.pts)
   backEnv <- terra::extract(env, back)[,-1] %>% na.omit()
   back <- back[as.numeric(rownames(backEnv))]
@@ -96,6 +97,18 @@ for(i in unique(occ$Species)){
   
   dat.tmp <- rbind(occEnv, backEnv)
   dat.tmp <- cbind(presBg, dat.tmp)
+  # dat.tmp <- dat.tmp %>% 
+  #   fastDummies::dummy_cols(
+  #     select_columns = "LéGENDE__E",
+  #     remove_selected_columns = T,
+  #     omit_colname_prefix = T,
+  #     remove_most_frequent_dummy  = T
+  #   )
+  # names(dat.tmp) <- gsub(" ", "_", names(dat.tmp))
+  # 
+  # names(dat.tmp) <- gsub('[^[:alnum:] ]','',names(dat.tmp))
+  # names(dat.tmp) <- substr(names(dat.tmp), nchar(names(dat.tmp)) - 6 + 1, nchar(names(dat.tmp)))
+  # names(dat.tmp) <- substr(names(dat.tmp), )
   
   # define cross-validation folds
   k = 4
@@ -116,10 +129,10 @@ for(i in unique(occ$Species)){
     trainFx = trainMaxNet,
     classes = "default",
     regMult = seq(.5, 5, .5),
-    forceLinear = F,
+    forceLinear = T,
     testClasses = T,
     cores = 8,
-    verbose = 3
+    verbose = 1
   )
   
   res.mx <- bind_rows(mx.cv$tuning) %>% 
@@ -134,9 +147,7 @@ for(i in unique(occ$Species)){
     resp = "presBg",
     preds = names(dat.tmp)[2:ncol(dat.tmp)],
     classes = sel.mx$classes,
-    regMult = sel.mx$regMult,
-    forceLinear = F,
-    verbose = 3
+    regMult = sel.mx$regMult
   )
   
   mxMap <- predictEnmSdm(mx, env)
@@ -150,7 +161,7 @@ for(i in unique(occ$Species)){
     trainFx = trainRF,
     numTrees = c(250, 500, 750, 1000),
     cores = 8,
-    verbose = 3
+    verbose = 1
   )
   
   res.rf <- bind_rows(m.rf.cv$tuning) %>% 
@@ -165,8 +176,7 @@ for(i in unique(occ$Species)){
     resp = "presBg",
     preds = names(dat.tmp)[2:ncol(dat.tmp)],
     numTrees = res.rf$numTrees,
-    cores = 8,
-    verbose = 3
+    cores = 8
   )
   
   rfMap <- predictEnmSdm(m.rf, env)
@@ -182,7 +192,7 @@ for(i in unique(occ$Species)){
     treeComplexity = c(1,3,5,7,9,11),
     bagFraction = c(5:7)/10,
     cores = 8,
-    verbose = 3
+    verbose = 1
   )
   
   res.mbrt <- bind_rows(mbrt.cv$tuning) %>% 
@@ -198,8 +208,7 @@ for(i in unique(occ$Species)){
     preds = names(dat.tmp)[2:ncol(dat.tmp)],
     learningRate = sel.mbrt$learningRate,
     treeComplexity = sel.mbrt$treeComplexity,
-    bagFraction = sel.mbrt$bagFraction,
-    verbose = 3
+    bagFraction = sel.mbrt$bagFraction
   )
   
   brtMap <- predictEnmSdm(mbrt, env)
@@ -211,6 +220,8 @@ for(i in unique(occ$Species)){
     preds = names(dat.tmp)[2:ncol(dat.tmp)],
     folds = folds.all,
     trainFx = trainGLM,
+    quadratic = F,
+    interaction = F,
     cores = 8,
     verbose = 3
   )
@@ -229,7 +240,9 @@ for(i in unique(occ$Species)){
     data = dat.tmp,
     resp = "presBg",
     preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    verbose = 3
+    select = F,
+    quadratic = F,
+    interaction = F,
   )
   
   glmMap <- predictEnmSdm(mglm, env)
@@ -498,7 +511,7 @@ famd.cal <- FAMD(
   bind_rows(back.env %>% na.omit, 
             occ_env %>% dplyr::select(colnames(back.env)) %>% na.omit),
   ind.sup = (nrow(back.env %>% na.omit)+1):
-              (nrow(back.env %>% na.omit)+nrow(occ_env %>% dplyr::select(colnames(back.env)) %>% na.omit)),
+    (nrow(back.env %>% na.omit)+nrow(occ_env %>% dplyr::select(colnames(back.env)) %>% na.omit)),
   ncp = 2,
   graph = F
 )
@@ -510,7 +523,7 @@ scores.sp <- famd.cal$ind.sup$coord %>% as_tibble %>%
 ggplot() + 
   geom_point(data = as_tibble(scores.back), aes(x = Dim.1, y = Dim.2), color = "lightgrey") +
   geom_point(data = scores.sp, aes(x = Dim.1, y = Dim.2, color = Species)) +
-    theme_bw()
+  theme_bw()
 
 overlap_env <- c()
 for(i in occ %>% filter(Introduced == "Yes") %>% pull(Species) %>% unique){
@@ -518,7 +531,7 @@ for(i in occ %>% filter(Introduced == "Yes") %>% pull(Species) %>% unique){
     if(i != j){
       scores.sp1 <- scores.sp %>% filter(Species == i)
       scores.sp2 <- scores.sp %>% filter(Species == j)
-
+      
       sp1_ecospat <- ecospat.grid.clim.dyn(
         glob = scores.back,
         glob1 = scores.back,
