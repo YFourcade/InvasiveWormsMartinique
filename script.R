@@ -69,7 +69,7 @@ ggplot() +
 # ENM / SDM ====
 ## set parameters ====
 # env <- aggregate(env, 20, fun = "modal") #for testing only
-nb.back.pts <- 1000 # for final models, use a bit more
+nb.back.pts <- 1000 # for final models, use more background points
 
 ## launch loop over all species ====
 results_all <- c()
@@ -97,6 +97,7 @@ for(i in unique(occ$Species)){
   
   dat.tmp <- rbind(occEnv, backEnv)
   dat.tmp <- cbind(presBg, dat.tmp)
+  
   # dat.tmp <- dat.tmp %>% 
   #   fastDummies::dummy_cols(
   #     select_columns = "LéGENDE__E",
@@ -275,9 +276,9 @@ for(i in unique(occ$Species)){
       ),
       cbind.data.frame(
         algorithm = "BRT",
-        sel.brt %>% dplyr::select(c("cbiTest", "aucTest", "tssTest")),
-        sel.brt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% unite(setting_values),
-        settings = sel.brt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% names %>% paste(collapse = ' ')
+        sel.mbrt %>% dplyr::select(c("cbiTest", "aucTest", "tssTest")),
+        sel.mbrt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% unite(setting_values),
+        settings = sel.mbrt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% names %>% paste(collapse = ' ')
       ),
       cbind.data.frame(
         algorithm = "GLM",
