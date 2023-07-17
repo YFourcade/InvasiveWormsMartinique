@@ -11,7 +11,7 @@ Ecological niche models produce continuous prediction of suitability for all nin
 
 The models are *NOT* final and should be considered as incorrect. A better choice of input variables and settings will be done later. 
 
-![Fig. 1](Suitability_maps.png){width=50%}
+![Fig. 1](Suitability_maps.png | width=50%)
 
 
 ### Overlap between native and introduced species
