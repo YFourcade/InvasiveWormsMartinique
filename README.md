@@ -7,5 +7,5 @@ Preliminary R code for generating ecological niche models / species distribution
 
 Continuous prediction of suitability for all nine species.
 
-![Fig. 1](Suitability_maps.svg)
+![Fig. 1](Suitability_maps.png)
 
