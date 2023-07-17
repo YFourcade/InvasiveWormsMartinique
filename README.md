@@ -11,8 +11,7 @@ Ecological niche models produce continuous prediction of suitability for all nin
 
 The models are *NOT* final and should be considered as incorrect. A better choice of input variables and settings will be done later. 
 
-![Fig. 1](Suitability_maps.png){width=50%}
-
+<img src="Suitability_maps.png" width="50%">
 
 ### Overlap between native and introduced species
 #### Maps
@@ -21,7 +20,7 @@ It is possible to plot the overlap between native and introduced species after d
 
 Here the regions of (potential) overlap are shown in red.
 
-![Fig. 2](Suitability_maps.png){width=50%}
+![Fig. 2](overlap_maps.png){width=50%}
 
 A possible way to synthesize the risk posed by introduced / invasive species is to sum all these red areas in a single map.
 
