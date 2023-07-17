@@ -15,6 +15,7 @@ library(ENMeval)
 library(ENMTools)
 library(enmSdmX)
 library(sf)
+library(retry)
 
 # Load data ====
 ## occurrence records ====
@@ -122,19 +123,26 @@ for(i in unique(occ$Species)){
   plot(st_geometry(occ.tmp), pch = 20 + folds$occs.grp, bg = folds$occs.grp + 1, add = TRUE)
   
   # MaxNet
-  mx.cv <- trainByCrossValid(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    folds = folds.all,
-    trainFx = trainMaxNet,
-    classes = "default",
-    regMult = seq(.5, 5, .5),
-    forceLinear = T,
-    testClasses = T,
-    cores = 8,
-    verbose = 1
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      mx.cv <- trainByCrossValid(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        folds = folds.all,
+        trainFx = trainMaxNet,
+        classes = "default",
+        regMult = c(.5,5,.5),
+        forceLinear = T,
+        testClasses = T,
+        cores = 8,
+        verbose = 1
+      )
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   res.mx <- bind_rows(mx.cv$tuning) %>% 
     group_by(regMult, classes) %>% 
@@ -143,27 +151,42 @@ for(i in unique(occ$Species)){
               tssTest = mean(tssTest, na.rm = T))
   sel.mx <- res.mx %>% ungroup %>% filter(cbiTest == max(cbiTest, na.rm = T)) %>% sample_n(1)
   
-  mx <- trainMaxNet(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    classes = sel.mx$classes,
-    regMult = sel.mx$regMult
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      mx <- trainMaxNet(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        classes = sel.mx$classes,
+        regMult = sel.mx$regMult
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
+  
   
   mxMap <- predictEnmSdm(mx, env)
   
   # Random Forest
-  m.rf.cv <- trainByCrossValid(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    folds = folds.all,
-    trainFx = trainRF,
-    numTrees = c(250, 500, 750, 1000),
-    cores = 8,
-    verbose = 1
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      m.rf.cv <- trainByCrossValid(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        folds = folds.all,
+        trainFx = trainRF,
+        numTrees = c(250, 500, 750, 1000),
+        cores = 8,
+        verbose = 1
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   res.rf <- bind_rows(m.rf.cv$tuning) %>% 
     group_by(numTrees) %>% 
@@ -172,29 +195,43 @@ for(i in unique(occ$Species)){
               tssTest = mean(tssTest, na.rm = T))
   sel.rf <- res.rf %>% ungroup %>% filter(cbiTest == max(cbiTest, na.rm = T)) %>% sample_n(1)
   
-  m.rf <- trainRF(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    numTrees = res.rf$numTrees,
-    cores = 8
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      m.rf <- trainRF(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        numTrees = res.rf$numTrees,
+        cores = 8
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   rfMap <- predictEnmSdm(m.rf, env)
   
   # Boosted regression trees
-  mbrt.cv <- trainByCrossValid(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    folds = folds.all,
-    trainFx = trainBRT,
-    learningRate = c(.0001, .001, .01, .1),
-    treeComplexity = c(1,3,5,7,9,11),
-    bagFraction = c(5:7)/10,
-    cores = 8,
-    verbose = 1
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      mbrt.cv <- trainByCrossValid(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        folds = folds.all,
+        trainFx = trainBRT,
+        learningRate = c(.0001, .001, .01, .1),
+        treeComplexity = c(1,3,5,7,9,11),
+        bagFraction = c(5:7)/10,
+        cores = 8,
+        verbose = 1
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   res.mbrt <- bind_rows(mbrt.cv$tuning) %>% 
     group_by(learningRate, treeComplexity, bagFraction) %>% 
@@ -203,29 +240,43 @@ for(i in unique(occ$Species)){
               tssTest = mean(tssTest, na.rm = T))
   sel.mbrt <- res.mbrt %>% ungroup %>% filter(cbiTest == max(cbiTest, na.rm = T)) %>% sample_n(1)
   
-  mbrt <- trainBRT(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    learningRate = sel.mbrt$learningRate,
-    treeComplexity = sel.mbrt$treeComplexity,
-    bagFraction = sel.mbrt$bagFraction
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      mbrt <- trainBRT(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        learningRate = sel.mbrt$learningRate,
+        treeComplexity = sel.mbrt$treeComplexity,
+        bagFraction = sel.mbrt$bagFraction
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   brtMap <- predictEnmSdm(mbrt, env)
   
   # GLM
-  mglm.cv <- trainByCrossValid(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    folds = folds.all,
-    trainFx = trainGLM,
-    quadratic = F,
-    interaction = F,
-    cores = 8,
-    verbose = 3
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      mglm.cv <- trainByCrossValid(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        folds = folds.all,
+        trainFx = trainGLM,
+        quadratic = F,
+        interaction = F,
+        cores = 8,
+        verbose = 1
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   res.mglm <- bind_rows(mglm.cv$tuning) %>% 
     group_by(k) %>% 
@@ -237,19 +288,30 @@ for(i in unique(occ$Species)){
               aucTest = mean(cbiTest, na.rm = T),
               tssTest = mean(tssTest, na.rm = T))
   
-  mglm <- trainGLM(
-    data = dat.tmp,
-    resp = "presBg",
-    preds = names(dat.tmp)[2:ncol(dat.tmp)],
-    select = F,
-    quadratic = F,
-    interaction = F,
-  )
+  boolFalse<-F
+  while(boolFalse==F){
+    tryCatch({
+      mglm <- trainGLM(
+        data = dat.tmp,
+        resp = "presBg",
+        preds = names(dat.tmp)[2:ncol(dat.tmp)],
+        select = F,
+        quadratic = F,
+        interaction = F,
+      )      
+      boolFalse = T
+    },error=function(e){
+    },finally={})
+  }
   
   glmMap <- predictEnmSdm(mglm, env)
   
   # ensemble predictions
-  preds <- c(mxMap,brtMap,rfMap,glmMap)
+  # preds <- c(mxMap,brtMap,rfMap,glmMap)
+  preds <- rast(lapply(
+    list(mxMap,brtMap,rfMap,glmMap),
+    climateStability::rescale0to1
+  ))
   weights <- c(sel.mx$cbiTest, sel.mbrt$cbiTest, sel.rf$cbiTest, sel.mglm$cbiTest)
   pred.ens <- weighted.mean(preds, weights)
   pred.sd <- stdev(preds)
