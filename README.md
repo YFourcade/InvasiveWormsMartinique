@@ -2,7 +2,7 @@
 
 Preliminary R code for generating ecological niche models / species distribution models of earthworms in Martinique, and analyzing the overlap between native and introduced species.
 
-The models are based on ensemble projections of four different fine-tuned algorithms: MaxEnt, but also random forest, boosted regression trees (* this one doesn't work for now; models are based on 3 methods*) and a simple GLM.
+The models are based on ensemble projections of four different fine-tuned algorithms: MaxEnt, but also random forest, boosted regression trees (*this one doesn't work for now; models are based on 3 methods*) and a simple GLM.
 
 
 ### Maps of environmental suitability
