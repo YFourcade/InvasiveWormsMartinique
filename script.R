@@ -76,7 +76,9 @@ nb.back.pts <- 1000 # for final models, use more background points
 results_all <- c()
 pred_all <- c()
 pred.bin_all <- c()
-for(i in unique(occ$Species)){
+for(i in setdiff(unique(occ$Species), results_all$Species)){
+  print(paste("Modelling:", i))
+  
   # select occurrence data
   occ.tmp <- occ %>% filter(Species == i) %>% dplyr::select(X, Y)
   occ.tmp <- st_as_sf(occ.tmp, coords = c("X", "Y"), crs = getCRS('WGS84'))
@@ -114,6 +116,21 @@ for(i in unique(occ$Species)){
   
   # define cross-validation folds
   k = 4
+  # folds <- blockCV::cv_spatial(
+  #   st_as_sf(
+  #     bind_rows(
+  #       st_coordinates(occ.tmp) %>% as_tibble, 
+  #       geom(back)[,c("x", "y")] %>% as_tibble %>% rename(X = x, Y = y)
+  #     ) %>% mutate(presBg), 
+  #     coords = c("X", "Y"), 
+  #     crs = getCRS('WGS84')
+  #   ), 
+  #   column = "presBg",
+  #   k = k,
+  #   extend = .5,
+  #   hexagon = F
+  # )
+  
   folds <- get.block(st_coordinates(occ.tmp), geom(back)[,c("x","y")])
   folds.all <- c(folds$occs.grp, folds$bg.grp)
   
@@ -123,6 +140,7 @@ for(i in unique(occ$Species)){
   plot(st_geometry(occ.tmp), pch = 20 + folds$occs.grp, bg = folds$occs.grp + 1, add = TRUE)
   
   # MaxNet
+  print("MaxEnt")
   boolFalse<-F
   while(boolFalse==F){
     tryCatch({
@@ -170,6 +188,7 @@ for(i in unique(occ$Species)){
   mxMap <- predictEnmSdm(mx, env)
   
   # Random Forest
+  print("Random Forest")
   boolFalse<-F
   while(boolFalse==F){
     tryCatch({
@@ -212,53 +231,55 @@ for(i in unique(occ$Species)){
   
   rfMap <- predictEnmSdm(m.rf, env)
   
-  # Boosted regression trees
-  boolFalse<-F
-  while(boolFalse==F){
-    tryCatch({
-      mbrt.cv <- trainByCrossValid(
-        data = dat.tmp,
-        resp = "presBg",
-        preds = names(dat.tmp)[2:ncol(dat.tmp)],
-        folds = folds.all,
-        trainFx = trainBRT,
-        learningRate = c(.0001, .001, .01, .1),
-        treeComplexity = c(1,3,5,7,9,11),
-        bagFraction = c(5:7)/10,
-        cores = 8,
-        verbose = 1
-      )      
-      boolFalse = T
-    },error=function(e){
-    },finally={})
-  }
-  
-  res.mbrt <- bind_rows(mbrt.cv$tuning) %>% 
-    group_by(learningRate, treeComplexity, bagFraction) %>% 
-    summarise(cbiTest = mean(cbiTest, na.rm = T), 
-              aucTest = mean(cbiTest, na.rm = T),
-              tssTest = mean(tssTest, na.rm = T))
-  sel.mbrt <- res.mbrt %>% ungroup %>% filter(cbiTest == max(cbiTest, na.rm = T)) %>% sample_n(1)
-  
-  boolFalse<-F
-  while(boolFalse==F){
-    tryCatch({
-      mbrt <- trainBRT(
-        data = dat.tmp,
-        resp = "presBg",
-        preds = names(dat.tmp)[2:ncol(dat.tmp)],
-        learningRate = sel.mbrt$learningRate,
-        treeComplexity = sel.mbrt$treeComplexity,
-        bagFraction = sel.mbrt$bagFraction
-      )      
-      boolFalse = T
-    },error=function(e){
-    },finally={})
-  }
-  
-  brtMap <- predictEnmSdm(mbrt, env)
+  # # Boosted regression trees
+  # print("BRT")
+  # boolFalse<-F
+  # while(boolFalse==F){
+  #   tryCatch({
+  #     mbrt.cv <- trainByCrossValid(
+  #       data = dat.tmp,
+  #       resp = "presBg",
+  #       preds = names(dat.tmp)[2:ncol(dat.tmp)],
+  #       folds = folds.all,
+  #       trainFx = trainBRT,
+  #       learningRate = c(.0001, .001, .01, .1),
+  #       treeComplexity = c(1,3,5,7,9,11),
+  #       bagFraction = c(5:7)/10,
+  #       cores = 8,
+  #       verbose = 1
+  #     )      
+  #     boolFalse = T
+  #   },error=function(e){
+  #   },finally={})
+  # }
+  # 
+  # res.mbrt <- bind_rows(mbrt.cv$tuning) %>% 
+  #   group_by(learningRate, treeComplexity, bagFraction) %>% 
+  #   summarise(cbiTest = mean(cbiTest, na.rm = T), 
+  #             aucTest = mean(cbiTest, na.rm = T),
+  #             tssTest = mean(tssTest, na.rm = T))
+  # sel.mbrt <- res.mbrt %>% ungroup %>% filter(cbiTest == max(cbiTest, na.rm = T)) %>% sample_n(1)
+  # 
+  # boolFalse<-F
+  # while(boolFalse==F){
+  #   tryCatch({
+  #     mbrt <- trainBRT(
+  #       data = dat.tmp,
+  #       resp = "presBg",
+  #       preds = names(dat.tmp)[2:ncol(dat.tmp)],
+  #       learningRate = sel.mbrt$learningRate,
+  #       treeComplexity = sel.mbrt$treeComplexity,
+  #       bagFraction = sel.mbrt$bagFraction
+  #     )      
+  #     boolFalse = T
+  #   },error=function(e){
+  #   },finally={})
+  # }
+  # 
+  # brtMap <- predictEnmSdm(mbrt, env)
   
   # GLM
+  print("GLM")
   boolFalse<-F
   while(boolFalse==F){
     tryCatch({
@@ -269,10 +290,14 @@ for(i in unique(occ$Species)){
         folds = folds.all,
         trainFx = trainGLM,
         quadratic = F,
-        interaction = F,
+        interaction = T,
+        interceptOnly = F,
         cores = 8,
-        verbose = 1
-      )      
+        verbose = 1,
+        presPerTermInitial = 1,
+        presPerTermFinal = 1,
+        maxTerms = 5
+      )
       boolFalse = T
     },error=function(e){
     },finally={})
@@ -280,12 +305,12 @@ for(i in unique(occ$Species)){
   
   res.mglm <- bind_rows(mglm.cv$tuning) %>% 
     group_by(k) %>% 
-    summarise(cbiTest = cbiTest[AICc == min(AICc)], 
-              aucTest = aucTest[AICc == min(AICc)],
-              tssTest = tssTest[AICc == min(AICc)])
-  sel.mglm <- res.mglm %>% 
+    summarise(cbiTest = unique(cbiTest[AICc == min(AICc)]), 
+              aucTest = unique(aucTest[AICc == min(AICc)]),
+              tssTest = unique(tssTest[AICc == min(AICc)]))
+  sel.mglm <- res.mglm %>% ungroup %>% 
     summarise(cbiTest = mean(cbiTest, na.rm = T), 
-              aucTest = mean(cbiTest, na.rm = T),
+              aucTest = mean(aucTest, na.rm = T),
               tssTest = mean(tssTest, na.rm = T))
   
   boolFalse<-F
@@ -295,9 +320,12 @@ for(i in unique(occ$Species)){
         data = dat.tmp,
         resp = "presBg",
         preds = names(dat.tmp)[2:ncol(dat.tmp)],
-        select = F,
         quadratic = F,
-        interaction = F,
+        interaction = T,
+        interceptOnly = F,
+        presPerTermInitial = 1,
+        presPerTermFinal = 1,
+        maxTerms = 5
       )      
       boolFalse = T
     },error=function(e){
@@ -309,10 +337,10 @@ for(i in unique(occ$Species)){
   # ensemble predictions
   # preds <- c(mxMap,brtMap,rfMap,glmMap)
   preds <- rast(lapply(
-    list(mxMap,brtMap,rfMap,glmMap),
+    list(mxMap,rfMap,glmMap),
     climateStability::rescale0to1
   ))
-  weights <- c(sel.mx$cbiTest, sel.mbrt$cbiTest, sel.rf$cbiTest, sel.mglm$cbiTest)
+  weights <- c(sel.mx$cbiTest, sel.rf$cbiTest, sel.mglm$cbiTest)
   pred.ens <- weighted.mean(preds, weights)
   pred.sd <- stdev(preds)
   
@@ -336,12 +364,12 @@ for(i in unique(occ$Species)){
         sel.rf %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% unite(setting_values),
         settings = sel.rf %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% names %>% paste(collapse = ' ')
       ),
-      cbind.data.frame(
-        algorithm = "BRT",
-        sel.mbrt %>% dplyr::select(c("cbiTest", "aucTest", "tssTest")),
-        sel.mbrt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% unite(setting_values),
-        settings = sel.mbrt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% names %>% paste(collapse = ' ')
-      ),
+      # cbind.data.frame(
+      #   algorithm = "BRT",
+      #   sel.mbrt %>% dplyr::select(c("cbiTest", "aucTest", "tssTest")),
+      #   sel.mbrt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% unite(setting_values),
+      #   settings = sel.mbrt %>% dplyr::select(!c("cbiTest", "aucTest", "tssTest")) %>% names %>% paste(collapse = ' ')
+      # ),
       cbind.data.frame(
         algorithm = "GLM",
         sel.mglm %>% dplyr::select(c("cbiTest", "aucTest", "tssTest")),
@@ -359,7 +387,6 @@ for(i in unique(occ$Species)){
 }
 
 # Restructure results ====
-results_all <- results_all %>% mutate(Species = unique(occ$Species), .before = 1)
 results_all <- results_all %>% left_join(
   occ %>% dplyr::select(1,4) %>% 
     group_by(Species) %>% 
@@ -381,23 +408,26 @@ pred_all <- rast("../SDM_predictions.tif")
 pred.bin_all <- rast("../SDM_predictions.binary.tif")
 
 # Check model evaluation ====
-ggplot(results_all, aes(y = cbi.val.avg, x = n.occ)) +
-  geom_point() + theme_bw()
-ggplot(results_all, aes(y = auc.val.avg, x = n.occ)) +
-  geom_point() + theme_bw()
-ggplot(results_all, aes(y = cbi.val.avg, x = auc.val.avg)) +
-  geom_point() + theme_bw()
+# ggplot(results_all, aes(y = cbiTest, x = n.occ)) +
+#   geom_point() + theme_bw()
+# ggplot(results_all, aes(y = auc.val.avg, x = n.occ)) +
+#   geom_point() + theme_bw()
+# ggplot(results_all, aes(y = cbi.val.avg, x = auc.val.avg)) +
+#   geom_point() + theme_bw()
 
 results_all %>% 
   group_by(Introduced) %>% 
-  summarise(cbi = mean(cbi.val.avg, na.rm = T),
-            cbi.se = plotrix::std.error(cbi.val.avg, na.rm = T)) %>% 
+  summarise(cbi = mean(cbiTest, na.rm = T),
+            cbi.se = plotrix::std.error(cbiTest, na.rm = T)) %>% 
   ggplot(aes(y = cbi, x = Introduced, fill = Introduced,
              ymin = cbi - cbi.se, ymax = cbi + cbi.se)) +
   geom_bar(stat = 'identity') + 
   geom_errorbar(width = .3) +
+  scale_y_continuous("Continuous Boyce index", limits = c(0, .8), expand = c(0,0)) +
   theme_bw() +
   theme(legend.position = "none")
+
+ggsave(filename = "../eval.pdf", height = 4, width = 5)
 
 # Plot model predictions ====
 ## continuous ====
@@ -417,6 +447,7 @@ as.data.frame(pred_all, xy = T) %>% as_tibble %>%
   coord_sf()
 
 ggsave(filename = "../Suitability_maps.pdf", height = 7, width = 6.5)
+ggsave(filename = "Suitability_maps.png", height = 7, width = 6.5)
 
 ## binary ====
 as.data.frame(pred.bin_all, xy = T) %>% as_tibble %>% 
@@ -540,6 +571,7 @@ overlap.plot %>% mutate(Overlap = factor(Overlap, levels = c("No species", "Nati
   coord_sf()
 
 ggsave(filename = "../overlap_maps.pdf", width = 11, height = 6)
+ggsave(filename = "overlap_maps.png", width = 11, height = 6)
 
 
 ### synthetic invasion risk ====
@@ -555,7 +587,7 @@ overlap.plot %>% group_by(x, y) %>%
   coord_sf()
 
 ggsave(filename = "../synthetic_maps.pdf", width = 6, height = 5)
-
+ggsave(filename = "synthetic_maps.png", width = 6, height = 5)
 
 # Metrics of geographical and environmental overlap ====
 ## extract environmental values ====
@@ -595,21 +627,31 @@ for(i in occ %>% filter(Introduced == "Yes") %>% pull(Species) %>% unique){
       scores.sp1 <- scores.sp %>% filter(Species == i)
       scores.sp2 <- scores.sp %>% filter(Species == j)
       
-      sp1_ecospat <- ecospat.grid.clim.dyn(
-        glob = scores.back,
-        glob1 = scores.back,
-        sp = scores.sp1[,1:2],
-        R = 100
-      )
+      boolFalse<-F
+      tryCatch({
+        sp1_ecospat <- ecospat.grid.clim.dyn(
+          glob = scores.back,
+          glob1 = scores.back,
+          sp = scores.sp1[,1:2],
+          R = 100
+        )
+        
+        sp2_ecospat <- ecospat.grid.clim.dyn(
+          glob = scores.back,
+          glob1 = scores.back,
+          sp = scores.sp2[,1:2],
+          R = 100
+        )
+        
+        D <- ecospat.niche.overlap(sp1_ecospat, sp2_ecospat, cor = T)$D
+        
+        boolFalse<-T
+      },error=function(e){
+      },finally={})
       
-      sp2_ecospat <- ecospat.grid.clim.dyn(
-        glob = scores.back,
-        glob1 = scores.back,
-        sp = scores.sp2[,1:2],
-        R = 100
-      )
-      
-      D <- ecospat.niche.overlap(sp1_ecospat, sp2_ecospat, cor = T)$D
+      if(boolFalse == F){
+        D <- 0
+      }
       
       overlap_env <- rbind.data.frame(
         overlap_env,
@@ -617,7 +659,7 @@ for(i in occ %>% filter(Introduced == "Yes") %>% pull(Species) %>% unique){
           Introduced = i , 
           Native = j, 
           D_env = D
-        ) 
+        )
       )
     }
   }
@@ -673,6 +715,7 @@ p_d_geo <- ggplot(data = overlap_geo, aes(y=Introduced, x=Native, fill=D_geo, la
 cowplot::plot_grid(p_d_env, p_d_geo, nrow = 1, labels = "AUTO")
 
 ggsave(filename = "../overlap_indices.pdf", width = 8, height = 4.5)
+ggsave(filename = "overlap_indices.png", width = 8, height = 4.5)
 
 # merge
 overlap <- left_join(overlap_env, overlap_geo)
