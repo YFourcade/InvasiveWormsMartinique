@@ -32,29 +32,7 @@ occ <- occ %>% left_join(
 ) %>% filter(n > 10) %>% dplyr::select(-n)
 
 ## environmental variables ====
-elevation <- rast("../../Data_GIS/MNT/MNT_Martinique.grd")
-
-nebulosity <- rast("../../Data_GIS/Nebulosite/Cloud_cover_Martinique_UTM.asc")
-crs(nebulosity) <- "epsg:5490"
-nebulosity <- project(nebulosity, elevation)
-nebulosity[nebulosity == 0] <- NA
-
-elevation <- mask(elevation, nebulosity)
-
-soil <- vect("../../Data_GIS/Soil/Soil_Martinique.shp")
-soil$LéGENDE__E <- gsub("SOL BRUN", "SOLS BRUN", soil$LéGENDE__E)
-soil <- project(soil, elevation)
-soil <- rasterize(soil, elevation, field = "LéGENDE__E")
-
-OS <- vect("../../Data_GIS/OCCUPATION_SOL/OCCUPATION_SOL.shp")
-OS[grepl("CS2.1", OS$CODE_CS),"CODE_CS"] <- 1
-OS[OS$CODE_CS != 1, "CODE_CS"] <- 0
-OS <- project(OS, elevation)
-Forest <- rasterize(OS, elevation, field = "CODE_CS")
-
-### Merge and plot ====
-env <- c(elevation, nebulosity, soil, Forest)
-plot(env)
+env <- rast(".././env.tiff")
 
 # Map data ====
 martinique <- ne_countries(scale = 10, type = "map_units", country = 'france', returnclass = "sf") %>%
