@@ -196,7 +196,7 @@ for(i in sp.char %>% filter(Origin == "Native") %>% pull("Species")){
     corr.sps_rast <- subset(pred.bin_all, c(i,j))
     overlap.plot.tmp <- as.data.frame(aggregate(corr.sps_rast, aggr.fact, fun = max), xy = T) %>% 
       as_tibble %>% 
-      rename(Introduced = 3, Native = 4) %>% 
+      rename(Introduced = 4, Native = 3) %>% 
       mutate(Overlap = ifelse(Native == 1 & Introduced == 1, "Overlap",
                               ifelse(Native == 1 & Introduced == 0, "Native only",
                                      ifelse(Native == 0 & Introduced == 1, "Introduced only", 
