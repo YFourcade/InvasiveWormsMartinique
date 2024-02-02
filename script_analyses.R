@@ -428,7 +428,7 @@ p_d_geo <-  overlap_geo %>%
 ## plot ====
 cowplot::plot_grid(p_d_env, p_d_geo, nrow = 2, labels = "AUTO")
 
-ggsave(filename = "overlap_indices.png", width = 8, height = 10)
+ggsave(filename = "overlap_indices.png", width = 7, height = 9)
 
 # merge
 overlap <- left_join(overlap_env, overlap_geo)
