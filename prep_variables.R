@@ -51,8 +51,8 @@ Forest.prop <- mask(Forest.prop, elevation)
 # water course
 water <- vect("../../Data_GIS/Hydrographie/COURS_D_EAU.shp")
 water <- project(water, elevation)
-dist.water <- distance(aggregate(elevation, 10), water)
-dist.water <- mask(resample(dist.water, elevation), elevation)
+dist.water <- distance(elevation, water)
+dist.water <- mask(dist.water, elevation)
 
 # soil types
 soil <- vect("../../Data_GIS/Soil/Soil_Martinique.shp")
@@ -62,7 +62,6 @@ soil <- rasterize(soil, elevation, field = "LéGENDE__E")
 
 # merge and write
 env <- c(elevation, nebulosity, soil, Forest.prop, Agri.prop, dist.water)
-names(env) <- c("Elevation", "Nebulosity", "Soil", "Forest", "Agriculture", "Water")
 plot(env)
 
 terra::writeRaster(env, ".././env.tiff", overwrite = T)
