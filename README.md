@@ -50,13 +50,15 @@ Here the regions of (potential) overlap are shown in red.
 
 <img src="Pairwise_overlap_arboreal.png" width="65%">
 
-A possible way to synthesize the risk posed by introduced / invasive species is to sum all these red areas in a single map.
-
-<img src="synthetic_maps.png" width="80%">
 
 ##### Soil species
 
 <img src="Pairwise_overlap_soil.png" width="80%">
+
+
+A possible way to synthesize the risk posed by introduced / invasive species is to sum all these red areas in a single map.
+
+<img src="synthetic_maps.png" width="80%">
 
 
 #### Overlap indices
