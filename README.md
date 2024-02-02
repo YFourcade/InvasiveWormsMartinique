@@ -30,15 +30,15 @@ The models are **NOT** final and should be considered as incorrect. A better cho
 
 Ecological niche models produce continuous prediction of environmental suitability. 
 
-<img src="Suitability_maps.png" width="60%">
+<img src="Suitability_maps.png" width="80%">
 
 These predictions can be converted into binary maps (suitable / unsuitable), which is necessary to delineate regions of overlap. Here the suitability threshold was set as the 10th percentile training presence threshold (i.e. omits all regions with habitat suitability lower than the suitability values for the lowest 10% of occurrence records).
 
-<img src="Suitability_maps_binary.png" width="60%">
+<img src="Suitability_maps_binary.png" width="80%">
 
 Merging predictions allows to map potential species richness of native and introduced species, in both habitat types. 
 
-<img src="Species_richness_separated.png" width="60%">
+<img src="Species_richness_separated.png" width="80%">
 
 
 ### Overlap between native and introduced species
@@ -48,21 +48,21 @@ Here the regions of (potential) overlap are shown in red.
 
 ##### Arboreal species
 
-<img src="Pairwise_overlap_arboreal.png" width="45%">
+<img src="Pairwise_overlap_arboreal.png" width="65%">
 
 A possible way to synthesize the risk posed by introduced / invasive species is to sum all these red areas in a single map.
 
-<img src="synthetic_maps.png" width="75%">
+<img src="synthetic_maps.png" width="80%">
 
 ##### Soil species
 
-<img src="Pairwise_overlap_soil.png" width="60%">
+<img src="Pairwise_overlap_soil.png" width="80%">
 
 
 #### Overlap indices
 
 Indices of niche overlap, based on Shoener's D index, can be computed between native and introduced species, both in the environmental space (*A*; overlap in their ecological niches) and in the geographical space (*B*; overlap in their predicted range in Martinique).
 
-<img src="overlap_indices.png" width="60%">
+<img src="overlap_indices.png" width="80%">
 
 

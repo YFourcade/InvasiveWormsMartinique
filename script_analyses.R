@@ -288,8 +288,7 @@ overlap.plot %>% group_by(x, y, Habitat) %>%
   theme(strip.text = element_text(face = 'bold')) +
   coord_sf()
 
-ggsave(filename = "../synthetic_maps.pdf", width = 6, height = 5)
-ggsave(filename = "synthetic_maps.png", width = 6, height = 5)
+ggsave(filename = "synthetic_maps.png", width = 10, height = 5)
 
 # Metrics of geographical and environmental overlap ====
 ## extract environmental values ====
