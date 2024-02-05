@@ -12,12 +12,36 @@ library(terra)
 library(rnaturalearth)
 library(sf)
 library(biomod2)
+library(readxl)
 # library(blockCV)
 
 # Load data ====
 ## occurrence records ====
-occ <- read_csv("../species_records.csv") %>% filter(Y<15, Y>14, X < -60.8) %>% 
-  distinct()
+# read files
+occ <- list.files(".././SP_NICHE_OVERLAP", full.names = T)[-1] %>% 
+  lapply(.,read_excel) %>% bind_rows() %>% select(nom_espece, coord_X, coord_Y) %>% 
+  rename(Species = 1, X = coord_X, Y = coord_Y) %>% 
+  mutate(Species = stringr::word(Species, 1, 2)) 
+
+# %>% 
+#   mutate(X = ifelse(X < -50, -X, X))
+  
+# read species characteristics
+sp_char <- read_excel(".././SP_NICHE_OVERLAP/SELECTION_SP.xlsx")
+names(sp_char) <- sp_char[1,]
+sp_char_a <- sp_char[2:9,] %>% mutate(Origin = "Exotic") %>% 
+  rename(Species = 3) %>% select(-DATA)
+sp_char_b <- sp_char[12:24,] %>% mutate(Origin = "Exotic") %>% 
+  rename(Species = 3) %>% select(-DATA)
+sp_char_tot <- bind_rows(sp_char_a, sp_char_b) %>% rename(Arboreal = 1, Soil = 2) %>% 
+  mutate(Arboreal = ifelse(is.na(Arboreal), 0 ,1),
+         Soil = ifelse(is.na(Soil), 0 , 1))
+
+# merge
+occ %>% left_join(sp_char_tot)
+
+# occ <- read_csv() %>% filter(Y<15, Y>14, X < -60.8) %>% 
+#   distinct()
 
 ### Select species ====
 occ %>% group_by(Species) %>% 
@@ -227,12 +251,19 @@ write_csv(Var_response, ".././Var_response.csv")
 
 
 # write rasters on disk ====
-pred_all <- rast(pred_all)
-names(pred_all) <- unique(occ$Species)
+pred_all <- rast(pred_all) 
+pred_all.cv <- rast(pred_all) 
+
+pred_all.mean <- subset(pred_all, grepl("mean", names(pred_all)))
+names(pred_all.mean) <- unique(occ$Species)
+
+writeRaster(pred_all, "../SDM_predictions.tif", overwrite = T)
+
+pred_all.cv <- subset(pred_all, grepl("cv", names(pred_all.cv)))
+names(pred_all.cv) <- unique(occ$Species)
 
 pred.bin_all <- rast(pred.bin_all)
 names(pred.bin_all) <- unique(occ$Species)
-
-writeRaster(pred_all, "../SDM_predictions.tif", overwrite = T)
 writeRaster(pred.bin_all, "../SDM_predictions.binary.tif", overwrite = T)
+
 

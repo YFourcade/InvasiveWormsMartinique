@@ -18,7 +18,7 @@ library(ENMTools)
 
 # set aggregation parameters ====
 max.c = 10000
-aggr.fact = 10
+aggr.fact = 5
 
 # reload all data ====
 ## rasters ====
@@ -146,7 +146,7 @@ ggsave(filename = "Suitability_maps_binary.png", height = 7, width = 9.5)
 ## all species ====
 n.over <- nrow(unique(sum(pred.bin_all)))
 ggplot() +
-  geom_spatraster(data = as.factor(sum(pred.bin_all)), maxcell = max.c) +
+  geom_spatraster(data = as.factor(sum(pred.bin_all)), maxcell = max.c*10) +
   scale_fill_manual(
     "No. species",
     values = c("grey85", colorRampPalette(c("khaki1", "red4"))(n.over-1)),
@@ -183,7 +183,7 @@ as.data.frame(pred.bin_all %>% aggregate(.,aggr.fact, fun = max), xy = T) %>% as
   ) +
   coord_sf(crs = st_crs("EPSG:4326"))
 
-ggsave(filename = "Species_richness_separated.png", height = 7, width = 9.5)
+ggsave(filename = "Species_richness_separated.png", height = 5, width = 6)
 
 ## introduced vs. native ====
 overlap.plot <- c()
