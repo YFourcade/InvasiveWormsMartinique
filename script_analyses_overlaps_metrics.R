@@ -95,6 +95,57 @@ allpts.soil <- bind_rows(
   .id = "type"
 )
 
+envValues <- bind_rows(
+  back.env %>% mutate(Origin = "Background"),
+  occ_env %>% dplyr::select(c(2, c(4:9)))
+) 
+names(envValues)[1:6] <- c("Elevation (m)", "Nebulosity (%)", "Soil type",
+                           "Distance to forest patch (m)", "Distance to agriculture patch (m)",
+                           "Bromeliad suitability")
+
+p_var <- c()
+for(j in 1:6){
+  if(names(envValues)[j] != "Soil type"){
+    p_var[[j]] <- ggplot() +
+      geom_density(data = envValues, 
+                   aes(x = .data[[names(envValues)[j]]] , fill = Origin), 
+                   color = NA,alpha = .3, adjust = 1.5) +
+      scale_y_continuous("Density", limits = c(0,NA), expand = c(0,NA)) +
+      scale_x_continuous(names(envValues)[j]) +
+      scale_fill_manual("", values = c("lightgrey", "#E41A1C", "#377EB8")) +
+      theme_classic()
+  } else {
+    p_var[[j]] <- envValues %>% count(`Soil type`, Origin) %>%
+      complete(`Soil type`, Origin, fill = list(n = 0)) %>% 
+      group_by(Origin) %>% mutate(tot = sum(n)) %>% 
+      group_by(`Soil type`, Origin) %>% summarise(prop = n/tot) %>% 
+      ggplot() +
+      geom_bar(aes(x = .data[[names(envValues)[j]]], y = prop, fill = Origin),
+               stat = 'identity', color = NA, alpha = .3, position = position_dodge()) +
+      geom_text(data = cbind.data.frame(label = tolower(unique(envValues$`Soil type`)),
+                                        y = 0.01,
+                                        x = 1:8),
+                aes(x=x, y = y , label = label), 
+                angle = 90, hjust = 0, vjust = 0, size = 2, color = "grey20") +
+      scale_y_continuous("Proportion", limits = c(0,NA), expand = c(0,NA)) +
+      scale_x_discrete(names(envValues)[j]) +
+      scale_fill_manual("", values = c("lightgrey", "#E41A1C", "#377EB8")) +
+      theme_classic() +
+      theme(legend.position = 'none',
+            axis.text.x = element_blank())
+  }
+}
+
+patchwork::wrap_plots(p_var) +
+  patchwork::plot_layout(guides = "collect")
+ggsave(filename = ".././Figures/Fig2.2.png")
+
+ggplot(aes(x = value, fill = Origin)) + 
+  facet_wrap(~name, scale = 'free') +
+  geom_density(color = NA,alpha = .5) +
+  theme_classic() +
+  theme(strip.placement = "outside", strip.background = element_blank()
+  )
 
 ## overlap in environmental space ====
 ### Arboreal ====
@@ -389,7 +440,7 @@ for(i in names(pred_all)){
 niche.breadth %>% left_join(sp_char) %>% ungroup %>% 
   mutate(Niche_breadth_geo = scale(Niche_breadth_geo),
          Niche_breadth_env = scale(Niche_breadth_env)) %>% 
-ggplot(aes(y = Niche_breadth_geo, x = Niche_breadth_env)) +
+  ggplot(aes(y = Niche_breadth_geo, x = Niche_breadth_env)) +
   # geom_smooth(method = 'lm', se = F, color = 'grey50', linewidth = .5) +
   geom_abline(slope = 1, intercept = 0, linetype = 2) +
   geom_point(aes(color = Origin, shape = Habitat)) +

@@ -38,7 +38,8 @@ names(pred_all_bin) <- gsub(".tif", "", names(pred_all_bin))
 SDM_evaluations <- lapply(
   list.files("../Results/", pattern = "ENM_results", full.names = T),
   read_csv
-) %>% bind_rows
+) %>% bind_rows %>% 
+  left_join(sp_char)
 
 Var_response <- lapply(
   list.files("../Results/", pattern = "response", full.names = T),
@@ -95,7 +96,7 @@ SDM_evaluations %>% dplyr::select(Species, model, BOYCE_mean, AUC_mean, TSS_mean
          metric.eval = gsub("TSS_mean", "TSS", metric.eval),
          metric.eval = factor(metric.eval, levels = c("Boyce index", "TSS", "AUC"))) %>% 
   group_by(Species,metric.eval) %>% 
-  summarise(value = max(value)) %>% 
+  summarise(value = mean(value)) %>% 
   left_join(sp_char) %>% 
   ggplot(aes(y = value, x = Origin, fill = Origin)) +
   geom_boxplot() +
@@ -117,24 +118,21 @@ SDM_evaluations %>% dplyr::select(Species, model, BOYCE_mean, AUC_mean, TSS_mean
          metric.eval = factor(metric.eval, levels = c("Boyce index", "TSS", "AUC"))) %>% 
   left_join(sp_char) %>% 
   group_by(Habitat, Origin, metric.eval) %>% 
-  summarise(value = max(value),n=length(unique(Species)))
+  summarise(value = mean(value),n=length(unique(Species)))
 
-SDM_evaluations %>% left_join(sp_char) %>% left_join(occ.nb) %>% 
+SDM_evaluations %>% left_join(occ.nb) %>% 
   ggplot(aes(y = BOYCE_mean, x = n.occ)) +
   geom_point() +
   geom_smooth(method = 'lm') +
   theme_bw()
 
-mm <- lmer(BOYCE_mean ~ n.occ * model * Origin + (1|Species), 
-           data = SDM_evaluations %>% left_join(sp_char) %>% left_join(occ.nb) )
-plot(mm)
-summary(mm)
-emmeans::emmeans(mm, ~ model)
 
 ### test differences between origin x habitat ====
 m.eval.boyce <- lmer(BOYCE_mean ~ Origin * Habitat + (1|model) + (1|Species),
-                     data = SDM_evaluations %>% left_join(sp_char))
+                     data = SDM_evaluations %>% filter(!Habitat %in% "Soil / Arboreal"))
 car::Anova(m.eval.boyce, type = 3)
+emmeans::emmeans(m.eval.boyce, ~ Origin | Habitat)
+coef(m.eval.boyce)
 
 m.eval.auc <- lmer(AUC_mean ~ Origin * Habitat + (1|model) + (1|Species),
                    data = SDM_evaluations %>% left_join(sp_char))
@@ -163,6 +161,14 @@ SDM_evaluations2 <- SDM_evaluations %>%
     Parameters = parameters
   ) %>% 
   dplyr::select(1,2,3,5,7,9)
+
+SDM_evaluations2 %>% group_by(model) %>% 
+  summarise_at(2:4, mean)
+
+GGally::ggpairs(SDM_evaluations2 %>% select(3:5))
+
+SDM_evaluations %>% group_by(Origin) %>% summarise_at(c(3,5,7), mean)
+SDM_evaluations %>% group_by(Habitat) %>% summarise_at(c(3,5,7), mean)
 
 ## variable importance ====
 # Var_importance %>% 
@@ -571,14 +577,18 @@ sum_overlaps <- lapply(
     lapply(names(s), function(n) {
       res <- freq(s[[n]])
       res$layer <- n
+      nam <- strsplit(n, " - ")[[1]][1]
+      res$Habitat <- sp_char[sp_char$Species == nam, "Habitat"][[1]]
       return(res)
     })
   }
 ) %>% bind_rows()
 
 sum_overlaps %>% group_by(layer) %>% 
-  summarise(n = length(value[value == "Overlap"])) %>%
-  pull(n) %>% table
+  group_by(Habitat) %>%
+  summarise(n = length(value[value == "Overlap"]))
+
+sum_overlaps %>% filter(value == "Overlap") %>% arrange(count)
 
 ### synthesis ====
 overlap_numbers <- rast(overlap.byNative) %>% as_tibble() %>%
